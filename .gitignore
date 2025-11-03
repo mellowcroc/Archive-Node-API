@@ -14,7 +14,7 @@ node_modules
 
 # Ignore built ts files
 build/**/*
- 
+
 
 # Ignore coverage
 coverage/**/*
@@ -22,9 +22,9 @@ coverage/**/*
 # Ignore benchmark results
 benchmark/*.json
 benchmark/*.csv
- 
+
 # docker-compose postgres volumes
-db/   
+/db/
 data/
 
 # memsearch
