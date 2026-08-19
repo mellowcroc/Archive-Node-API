@@ -1,10 +1,11 @@
+import { inspect } from 'node:util';
 import { createYoga } from 'graphql-yoga';
 import { createServer } from 'http';
 import { Plugin } from '@envelop/core';
 import { schema } from '../resolvers.js';
 import type { GraphQLContext } from '../context.js';
 import { useReadiness } from './readiness.js';
-import { resolveYogaLogLevel } from './logger.js';
+import { logger, resolveYogaLogLevel } from './logger.js';
 
 export {
   BLOCK_RANGE_SIZE,
@@ -13,15 +14,36 @@ export {
   buildServer,
 };
 
-const LOG_LEVEL = resolveYogaLogLevel();
 const BLOCK_RANGE_SIZE = Number(process.env.BLOCK_RANGE_SIZE) || 10000;
 const ENABLE_BLOCK_TRANSACTION_DETAILS =
   process.env.ENABLE_BLOCK_TRANSACTION_DETAILS === 'true';
+const YOGA_LOG_LEVEL = resolveYogaLogLevel();
+
+const yogaLog =
+  (level: 'debug' | 'info' | 'warn' | 'error') =>
+  (...args: unknown[]) => {
+    const err = args.find((arg): arg is Error => arg instanceof Error);
+    const msg = args
+      .filter((arg) => !(arg instanceof Error))
+      .map((arg) =>
+        typeof arg === 'string' ? arg : inspect(arg, { depth: 3 })
+      )
+      .join(' ');
+    logger[level](err ? { err } : {}, msg || 'yoga');
+  };
 
 function buildYoga(context: GraphQLContext, plugins: Plugin[]) {
   return createYoga<GraphQLContext>({
     schema,
-    logging: LOG_LEVEL,
+    logging:
+      YOGA_LOG_LEVEL === false
+        ? false
+        : {
+            debug: yogaLog('debug'),
+            info: yogaLog('info'),
+            warn: yogaLog('warn'),
+            error: yogaLog('error'),
+          },
     graphqlEndpoint: '/',
     landingPage: false,
     // Liveness — the process is up and serving HTTP.
